@@ -1,0 +1,10 @@
+{
+  "name": "campusgate-identity-layer",
+  "version": "1.0.0",
+  "description": "Unified, Privacy-Conscious Digital Identity Layer for Campus Services",
+  "type": "module",
+  "scripts": {
+    "start": "node backend/server.js",
+    "seed": "node backend/scripts/seed.js"
+  }
+}

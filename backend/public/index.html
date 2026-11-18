@@ -1,0 +1,1759 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CampusID — One ID. Every campus service. Secure by design.</title>
+  <meta name="description" content="A secure digital student ID with rotating QR codes, two-factor login and minimal disclosure for gate, library, hostel, exam hall and canteen." />
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              accent: '#38bdf8',
+              cyan: '#06b6d4',
+              primary: '#2563eb',
+              deep: '#1e3a8a',
+            },
+            surface: {
+              dark: '#090d16',
+              card: '#0f1626',
+              border: '#1e293b',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'Consolas', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="bg-[#090d16] text-slate-100 min-h-screen flex flex-col antialiased selection:bg-brand-accent selection:text-black bg-grid-dots">
+
+  <!-- TOP STICKY NAVBAR (Matching CampusID / OneCampus TrustPass) -->
+  <header class="sticky top-0 z-40 bg-[#090d16]/90 backdrop-blur-md border-b border-slate-800/80 shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      
+      <!-- Brand Logo -->
+      <div class="flex items-center gap-3 cursor-pointer" onclick="switchTab('homeOverview')">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-700 via-indigo-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-blue-500/20 text-white">
+          <i data-lucide="shield-check" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-lg tracking-tight text-white">Campus<span class="text-cyan-400 font-extrabold">ID</span></span>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-800 text-cyan-300 font-mono font-medium">TrustPass v1.0</span>
+          </div>
+          <p class="text-[11px] text-slate-400 hidden sm:block">One ID. Every campus service. Secure by design.</p>
+        </div>
+      </div>
+
+      <!-- Right Header Actions -->
+      <div class="flex items-center gap-3">
+        
+        <!-- Live Audit Chain Indicator -->
+        <div id="topChainStatus" class="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-800/80 text-xs font-mono text-emerald-400">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 pulse-green"></span>
+          <span>Audit Chain: <strong id="topChainSeq">9 blocks</strong> (Intact)</span>
+        </div>
+
+        <!-- Quick Switch Demo Role Selector -->
+        <div class="flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 rounded-xl p-1 shadow-sm">
+          <i data-lucide="users" class="w-3.5 h-3.5 text-slate-400 ml-1.5"></i>
+          <select id="demoUserSelector" class="bg-transparent text-xs text-slate-200 focus:outline-none cursor-pointer pr-2 py-0.5 font-medium">
+            <option value="" disabled selected>Role Switcher...</option>
+            <option value="student">Student (Aanya Sharma)</option>
+            <option value="faculty">Faculty (Dr. Rohan Mehta)</option>
+            <option value="admin">Security Admin (Priya Nair)</option>
+            <option value="service_admin">Librarian (Vikram Rao)</option>
+            <option value="pending">Kabir Patel (Unactivated)</option>
+          </select>
+        </div>
+
+        <!-- Authenticator Companion Button -->
+        <button id="toggleTotpCompanionBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-950/80 border border-blue-800/70 text-blue-300 hover:bg-blue-900/50 text-xs font-medium transition" title="Toggle Live 2FA Authenticator Companion">
+          <i data-lucide="key" class="w-3.5 h-3.5 text-cyan-400"></i>
+          <span class="hidden sm:inline">TOTP Helper</span>
+        </button>
+
+        <!-- Current User Profile / Logout -->
+        <div id="userHeaderBlock" class="hidden flex items-center gap-2 pl-2 border-l border-slate-800">
+          <div class="text-right text-xs">
+            <p id="headerUserName" class="font-bold text-white leading-tight">Aanya Sharma</p>
+            <span id="headerUserRole" class="px-1.5 py-0.2 rounded text-[10px] uppercase font-mono bg-blue-950 text-blue-300 border border-blue-800">Student</span>
+          </div>
+          <button id="headerLogoutBtn" class="p-1.5 rounded-lg bg-slate-900 hover:bg-rose-950 text-slate-400 hover:text-rose-400 border border-slate-800 hover:border-rose-800 transition" title="Global Single Logout (SLO)">
+            <i data-lucide="log-out" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- PRIMARY APP NAVIGATION TABS (Pill style matching Lovable design) -->
+    <nav class="bg-[#0b0f1a] border-t border-slate-800/80 px-4 sm:px-6 lg:px-8 overflow-x-auto scrollbar-none">
+      <div class="max-w-7xl mx-auto flex space-x-1 sm:space-x-2 py-2">
+        <button data-tab="homeOverview" class="nav-tab active flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium transition whitespace-nowrap">
+          <i data-lucide="home" class="w-4 h-4"></i>
+          <span>Overview</span>
+        </button>
+        <button data-tab="digitalIdCard" class="nav-tab flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition whitespace-nowrap">
+          <i data-lucide="qr-code" class="w-4 h-4 text-cyan-400"></i>
+          <span>Live Digital ID</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 font-mono">30s QR</span>
+        </button>
+        <button data-tab="staffScanner" class="nav-tab flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition whitespace-nowrap">
+          <i data-lucide="scan-line" class="w-4 h-4 text-amber-400"></i>
+          <span>Staff Scan & Go</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800">Verifier</span>
+        </button>
+        <button data-tab="privacyDashboard" class="nav-tab flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition whitespace-nowrap">
+          <i data-lucide="shield" class="w-4 h-4 text-emerald-400"></i>
+          <span>Trust & Privacy</span>
+        </button>
+        <button data-tab="serviceLibrary" class="nav-tab flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition whitespace-nowrap">
+          <i data-lucide="book-open" class="w-4 h-4"></i>
+          <span>Library</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800">RP 1</span>
+        </button>
+        <button data-tab="serviceHostel" class="nav-tab flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition whitespace-nowrap">
+          <i data-lucide="building" class="w-4 h-4"></i>
+          <span>Hostel</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800">RP 2</span>
+        </button>
+        <button data-tab="serviceExamFees" class="nav-tab flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition whitespace-nowrap">
+          <i data-lucide="credit-card" class="w-4 h-4"></i>
+          <span>Exam & Fees</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">Step-Up</span>
+        </button>
+        <button data-tab="adminConsole" class="nav-tab flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition whitespace-nowrap">
+          <i data-lucide="terminal" class="w-4 h-4 text-purple-400"></i>
+          <span>Security Admin</span>
+        </button>
+        <button data-tab="demoShowcase" class="nav-tab flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium text-amber-300 hover:text-amber-200 bg-amber-950/40 border border-amber-800/60 transition whitespace-nowrap">
+          <i data-lucide="sparkles" class="w-4 h-4 text-amber-400"></i>
+          <span>PRD Acceptance Suite</span>
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- LIVE TOTP DEMO COMPANION FLOATING DRAWER -->
+  <div id="totpCompanionDrawer" class="hidden fixed bottom-6 right-6 z-50 w-80 glass-panel rounded-2xl p-4 shadow-2xl border border-blue-500/30 animate-in slide-in-from-bottom duration-200">
+    <div class="flex items-center justify-between pb-2 border-b border-slate-800 mb-3">
+      <div class="flex items-center gap-2">
+        <div class="w-2 h-2 rounded-full bg-emerald-400 pulse-green"></div>
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-300">Live Authenticator Companion</h4>
+      </div>
+      <button id="closeTotpCompanionBtn" class="text-slate-400 hover:text-white text-sm">&times;</button>
+    </div>
+    
+    <div class="space-y-3">
+      <div>
+        <p class="text-[11px] text-slate-400">Active Identity:</p>
+        <p id="companionUserName" class="text-xs font-semibold text-white">Aanya Sharma (Student)</p>
+      </div>
+
+      <!-- Live Code & Copy -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
+        <p class="text-[10px] text-slate-400 font-mono uppercase tracking-widest mb-1">Current 6-Digit TOTP</p>
+        <div class="flex items-center justify-center gap-3">
+          <span id="companionTotpCode" class="text-3xl font-extrabold font-mono tracking-widest text-cyan-400">------</span>
+          <button id="copyCompanionTotpBtn" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition" title="Copy code">
+            <i data-lucide="copy" class="w-4 h-4"></i>
+          </button>
+        </div>
+        <!-- Progress Bar for 30s window -->
+        <div class="w-full bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
+          <div id="totpTimerBar" class="bg-gradient-to-r from-blue-500 to-cyan-400 h-full w-full transition-all duration-1000 ease-linear"></div>
+        </div>
+        <p id="totpSecondsLeft" class="text-[10px] text-slate-500 mt-1 font-mono">Refreshes in 30s</p>
+      </div>
+
+      <div class="text-[11px] text-slate-400 flex items-center justify-between">
+        <span>Deterministic Backup:</span>
+        <code class="text-amber-300 font-bold font-mono">CAMP-BK01</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATIONS -->
+  <div id="toastContainer" class="fixed top-20 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- MAIN APP CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+
+    <!-- ============================================================== -->
+    <!-- TAB 1: HOME & OVERVIEW (MATCHING https://onecampus-trust-pass.lovable.app/) -->
+    <!-- ============================================================== -->
+    <section id="tab-homeOverview" class="tab-content space-y-16">
+      
+      <!-- HERO SECTION -->
+      <div class="relative overflow-hidden pt-8 pb-12 sm:pt-14 sm:pb-20 gradient-hero-glow rounded-3xl border border-slate-800/70 p-6 sm:p-12">
+        <div class="grid items-center gap-12 lg:grid-cols-[1.1fr_1fr]">
+          
+          <!-- Hero Left Column: Copy & Actions -->
+          <div class="space-y-6">
+            
+            <div class="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-900/90 px-3.5 py-1.5 text-xs font-semibold text-blue-400 shadow-sm">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 pulse-green"></span>
+              <span>Live, rotating, single-use QR</span>
+            </div>
+
+            <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight leading-[1.08] text-white">
+              One ID.<br />
+              Every campus service.<br />
+              <span class="text-gradient">Secure by design.</span>
+            </h1>
+
+            <p class="max-w-xl text-base sm:text-lg leading-relaxed text-slate-300">
+              A digital student ID that proves who you are without oversharing. Each scan reveals only what that service needs — and you see every time it happens.
+            </p>
+
+            <div class="flex flex-wrap items-center gap-3 pt-2">
+              <button onclick="switchTab('digitalIdCard')" class="px-6 py-3 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold text-sm shadow-lg shadow-blue-500/25 flex items-center gap-2 transition">
+                <i data-lucide="qr-code" class="w-4 h-4"></i>
+                <span>View Live Digital ID</span>
+              </button>
+              <button onclick="switchTab('authHub')" class="px-5 py-3 rounded-2xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-white font-semibold text-sm transition">
+                Sign In with 2FA / Activation
+              </button>
+              <button onclick="switchTab('staffScanner')" class="px-5 py-3 rounded-2xl bg-amber-950/40 hover:bg-amber-900/40 border border-amber-800/80 text-amber-300 font-semibold text-sm transition flex items-center gap-1.5">
+                <i data-lucide="scan-line" class="w-4 h-4"></i>
+                <span>Staff Verifier Simulator</span>
+              </button>
+            </div>
+
+            <!-- Trust Highlights -->
+            <div class="flex flex-wrap gap-x-6 gap-y-3 pt-4 text-xs font-medium text-slate-400 border-t border-slate-800/80">
+              <span class="inline-flex items-center gap-2 text-slate-300">
+                <i data-lucide="shield-check" class="w-4 h-4 text-blue-400"></i>
+                2FA on every account (Argon2id + TOTP)
+              </span>
+              <span class="inline-flex items-center gap-2 text-slate-300">
+                <i data-lucide="refresh-cw" class="w-4 h-4 text-cyan-400"></i>
+                New code every 30s
+              </span>
+              <span class="inline-flex items-center gap-2 text-slate-300">
+                <i data-lucide="eye-off" class="w-4 h-4 text-emerald-400"></i>
+                Minimal disclosure (DPDP 2023)
+              </span>
+            </div>
+
+          </div>
+
+          <!-- Hero Right Column: Digital Student ID Preview Card -->
+          <div class="relative mx-auto w-full max-w-sm">
+            <div class="absolute -inset-6 -z-10 rounded-full bg-cyan-500/15 blur-3xl"></div>
+            
+            <!-- Student Trust Card Component -->
+            <div class="student-id-card rounded-3xl p-6 text-white space-y-5 animate-float">
+              
+              <!-- Card Header -->
+              <div class="flex items-center justify-between pb-3 border-b border-slate-700/60">
+                <div class="flex items-center gap-2">
+                  <div class="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-xs">
+                    <i data-lucide="shield-check" class="w-4 h-4"></i>
+                  </div>
+                  <span class="font-bold text-sm tracking-tight">Campus<span class="text-cyan-400">ID</span></span>
+                </div>
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-950 text-blue-300 border border-blue-800">
+                  STUDENT
+                </span>
+              </div>
+
+              <!-- Student Profile Summary -->
+              <div class="flex items-center gap-3.5">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-lg font-extrabold shadow-md">
+                  <span>A</span>
+                </div>
+                <div>
+                  <h3 class="font-extrabold text-base leading-tight">Aanya Sharma</h3>
+                  <p class="text-xs text-slate-300">B.Tech Computer Science</p>
+                  <div class="flex items-center gap-3 text-[11px] text-slate-400 font-mono mt-0.5">
+                    <span>Enrolment: <strong class="text-white">EN2024CS001</strong></span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Rotating QR Code Module -->
+              <div class="bg-slate-900/90 rounded-2xl p-4 border border-slate-700/80 flex items-center gap-4 shadow-inner">
+                <div class="w-24 h-24 bg-white p-1.5 rounded-xl flex items-center justify-center shrink-0 shadow-md">
+                  <img id="heroLiveQrCode" src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=CAMPUSID-ROTATING-TOKEN-ACTIVE" alt="Live QR" class="w-full h-full" />
+                </div>
+                <div class="space-y-1.5 flex-1">
+                  <div class="flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 pulse-green"></span>
+                    <p class="text-xs font-bold text-white">Scan to verify</p>
+                  </div>
+                  <p id="heroQrCountdownText" class="text-[11px] text-slate-400 font-mono">Refreshes in 24s · single use</p>
+                  <!-- Progress Bar -->
+                  <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                    <div id="heroQrTimerBar" class="bg-gradient-to-r from-blue-500 to-cyan-400 h-full w-4/5 rounded-full transition-all duration-1000 ease-linear"></div>
+                  </div>
+                  <p class="text-[10px] text-cyan-400 font-mono">Valid till: 30 Jun 2027</p>
+                </div>
+              </div>
+
+              <!-- Floating Live Verification Tag -->
+              <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
+                <div class="w-8 h-8 rounded-lg bg-emerald-950 border border-emerald-800 flex items-center justify-center text-emerald-400 shrink-0">
+                  <i data-lucide="check" class="w-4 h-4"></i>
+                </div>
+                <div>
+                  <p class="font-bold text-white">Library · Verified</p>
+                  <p class="text-[11px] text-slate-400">Shared: nothing but validity</p>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+
+      <!-- SECTION: HOW IT WORKS (3 STEPS) -->
+      <div class="space-y-8">
+        <div class="text-center max-w-2xl mx-auto space-y-2">
+          <p class="text-xs font-bold uppercase tracking-widest text-cyan-400 font-mono">HOW IT WORKS</p>
+          <h2 class="text-3xl font-extrabold text-white">Three steps. Zero paper.</h2>
+          <p class="text-sm text-slate-400">From sign-up to a verified scan in under a minute.</p>
+        </div>
+
+        <div class="grid gap-6 md:grid-cols-3">
+          
+          <div class="relative glass-card p-7 space-y-4">
+            <span class="absolute right-6 top-6 text-5xl font-extrabold text-slate-800/40 select-none">01</span>
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-lg">
+              <i data-lucide="key-round" class="w-6 h-6"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white pt-2">Sign in with 2FA</h3>
+            <p class="text-sm leading-relaxed text-slate-400">
+              Create your account, link Google Authenticator, and confirm with a 6-digit code every time you log in. Passwords hashed with Argon2id.
+            </p>
+          </div>
+
+          <div class="relative glass-card p-7 space-y-4">
+            <span class="absolute right-6 top-6 text-5xl font-extrabold text-slate-800/40 select-none">02</span>
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-600 to-blue-600 text-white flex items-center justify-center shadow-lg">
+              <i data-lucide="qr-code" class="w-6 h-6"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white pt-2">Show your live ID</h3>
+            <p class="text-sm leading-relaxed text-slate-400">
+              Your card shows a cryptographically signed QR code that changes every 30 seconds and can only be used once. Screenshots are useless.
+            </p>
+          </div>
+
+          <div class="relative glass-card p-7 space-y-4">
+            <span class="absolute right-6 top-6 text-5xl font-extrabold text-slate-800/40 select-none">03</span>
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-600 text-white flex items-center justify-center shadow-lg">
+              <i data-lucide="scan-line" class="w-6 h-6"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white pt-2">Staff scan & go</h3>
+            <p class="text-sm leading-relaxed text-slate-400">
+              The verifier picks their service and scans. They see a clear green or red result — disclosing only permitted minimal attributes.
+            </p>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- SECTION: SUPPORTED SERVICES -->
+      <div class="space-y-8">
+        <div class="text-center max-w-2xl mx-auto space-y-2">
+          <p class="text-xs font-bold uppercase tracking-widest text-blue-400 font-mono">SUPPORTED SERVICES</p>
+          <h2 class="text-3xl font-extrabold text-white">Each service sees only what it needs</h2>
+          <p class="text-sm text-slate-400">Admins decide which fields every service may view. Everything else stays private.</p>
+        </div>
+
+        <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          
+          <!-- Service Card 1: Library -->
+          <div class="glass-card p-6 space-y-4 cursor-pointer hover:border-blue-500/50" onclick="switchTab('serviceLibrary')">
+            <div class="w-10 h-10 rounded-xl bg-blue-950/80 border border-blue-800 text-blue-400 flex items-center justify-center">
+              <i data-lucide="book-open" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-white">Campus Central Library</h3>
+              <p class="text-xs text-slate-400 mt-1">Book checkouts, academic catalog, reserve collections.</p>
+            </div>
+            <div class="flex flex-wrap gap-1.5 pt-2 border-t border-slate-800">
+              <span class="rounded-full bg-emerald-950/80 border border-emerald-800/80 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-300">Validity</span>
+              <span class="rounded-full bg-slate-900 border border-slate-700 px-2.5 py-0.5 text-[10px] font-semibold text-slate-300">Pairwise ID</span>
+              <span class="rounded-full bg-slate-900 border border-slate-700 px-2.5 py-0.5 text-[10px] font-semibold text-slate-300">Active Student</span>
+            </div>
+          </div>
+
+          <!-- Service Card 2: Hostel -->
+          <div class="glass-card p-6 space-y-4 cursor-pointer hover:border-purple-500/50" onclick="switchTab('serviceHostel')">
+            <div class="w-10 h-10 rounded-xl bg-purple-950/80 border border-purple-800 text-purple-400 flex items-center justify-center">
+              <i data-lucide="home" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-white">Hostel & Housing Portal</h3>
+              <p class="text-xs text-slate-400 mt-1">Room access, wing turnstile clearance, nightly gate pass.</p>
+            </div>
+            <div class="flex flex-wrap gap-1.5 pt-2 border-t border-slate-800">
+              <span class="rounded-full bg-emerald-950/80 border border-emerald-800/80 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-300">Validity</span>
+              <span class="rounded-full bg-slate-900 border border-slate-700 px-2.5 py-0.5 text-[10px] font-semibold text-slate-300">Resident Status</span>
+              <span class="rounded-full bg-slate-900 border border-slate-700 px-2.5 py-0.5 text-[10px] font-semibold text-slate-300">Hostel Block & Room</span>
+            </div>
+          </div>
+
+          <!-- Service Card 3: Exam & Fees -->
+          <div class="glass-card p-6 space-y-4 cursor-pointer hover:border-emerald-500/50" onclick="switchTab('serviceExamFees')">
+            <div class="w-10 h-10 rounded-xl bg-emerald-950/80 border border-emerald-800 text-emerald-400 flex items-center justify-center">
+              <i data-lucide="credit-card" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-white">Examination & Fee Portal</h3>
+              <p class="text-xs text-slate-400 mt-1">Semester tuition fee clearance and hall seating pass.</p>
+            </div>
+            <div class="flex flex-wrap gap-1.5 pt-2 border-t border-slate-800">
+              <span class="rounded-full bg-emerald-950/80 border border-emerald-800/80 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-300">Validity</span>
+              <span class="rounded-full bg-slate-900 border border-slate-700 px-2.5 py-0.5 text-[10px] font-semibold text-slate-300">Fee Clearance</span>
+              <span class="rounded-full bg-slate-900 border border-slate-700 px-2.5 py-0.5 text-[10px] font-semibold text-slate-300">Adaptive Step-Up</span>
+            </div>
+          </div>
+
+          <!-- Service Card 4: Campus Turnstile Gate -->
+          <div class="glass-card p-6 space-y-4">
+            <div class="w-10 h-10 rounded-xl bg-amber-950/80 border border-amber-800 text-amber-400 flex items-center justify-center">
+              <i data-lucide="door-closed" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-white">Main Campus Gate</h3>
+              <p class="text-xs text-slate-400 mt-1">Turnstile entry, vehicle pass, visitor verification.</p>
+            </div>
+            <div class="flex flex-wrap gap-1.5 pt-2 border-t border-slate-800">
+              <span class="rounded-full bg-emerald-950/80 border border-emerald-800/80 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-300">Validity</span>
+              <span class="rounded-full bg-slate-900 border border-slate-700 px-2.5 py-0.5 text-[10px] font-semibold text-slate-300">Active Gate Pass</span>
+            </div>
+          </div>
+
+          <!-- Service Card 5: Canteen & Dining -->
+          <div class="glass-card p-6 space-y-4">
+            <div class="w-10 h-10 rounded-xl bg-cyan-950/80 border border-cyan-800 text-cyan-400 flex items-center justify-center">
+              <i data-lucide="coffee" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-white">Campus Dining & Cafeteria</h3>
+              <p class="text-xs text-slate-400 mt-1">Meal plan verification, subsidy clearance, cashless pass.</p>
+            </div>
+            <div class="flex flex-wrap gap-1.5 pt-2 border-t border-slate-800">
+              <span class="rounded-full bg-emerald-950/80 border border-emerald-800/80 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-300">Validity</span>
+              <span class="rounded-full bg-slate-900 border border-slate-700 px-2.5 py-0.5 text-[10px] font-semibold text-slate-300">Meal Plan Active</span>
+            </div>
+          </div>
+
+          <!-- Custom Services Notice -->
+          <div class="flex flex-col justify-center rounded-3xl border border-dashed border-slate-800 bg-slate-950/40 p-6 space-y-2">
+            <p class="text-base font-bold text-white">Lab, Parking, Bus Pass, Events…</p>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Admins can register new relying party services at any time and configure exactly what each service is permitted to see.
+            </p>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- SECTION: SECURITY FEATURES (Built so a screenshot is worthless) -->
+      <div class="overflow-hidden rounded-[32px] gradient-card-glow border border-slate-800 p-8 sm:p-12 space-y-8">
+        <div class="max-w-2xl space-y-2">
+          <p class="text-xs font-bold uppercase tracking-widest text-cyan-400 font-mono">SECURITY ARCHITECTURE</p>
+          <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">Built so a screenshot is worthless.</h2>
+        </div>
+
+        <div class="grid gap-x-8 gap-y-7 sm:grid-cols-2 lg:grid-cols-3 pt-4">
+          
+          <div class="space-y-2">
+            <div class="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/40 text-blue-400 flex items-center justify-center">
+              <i data-lucide="key" class="w-5 h-5"></i>
+            </div>
+            <h3 class="font-bold text-white text-base">Hashed passwords + 2FA</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Passwords are Argon2id-hashed with breach list protection. Every sign-in requires a 6-digit TOTP authenticator code.
+            </p>
+          </div>
+
+          <div class="space-y-2">
+            <div class="w-10 h-10 rounded-xl bg-cyan-600/20 border border-cyan-500/40 text-cyan-400 flex items-center justify-center">
+              <i data-lucide="clock" class="w-5 h-5"></i>
+            </div>
+            <h3 class="font-bold text-white text-base">30-second signed tokens</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              QR codes are signed by the IdP and expire in 30 seconds. They hold only a pseudonymous reference, not raw personal data.
+            </p>
+          </div>
+
+          <div class="space-y-2">
+            <div class="w-10 h-10 rounded-xl bg-rose-600/20 border border-rose-500/40 text-rose-400 flex items-center justify-center">
+              <i data-lucide="shield-alert" class="w-5 h-5"></i>
+            </div>
+            <h3 class="font-bold text-white text-base">Replay protection</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Each code works once. A re-used code is blocked, raises an immediate alert, and revokes all active sessions.
+            </p>
+          </div>
+
+          <div class="space-y-2">
+            <div class="w-10 h-10 rounded-xl bg-emerald-600/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center">
+              <i data-lucide="eye-off" class="w-5 h-5"></i>
+            </div>
+            <h3 class="font-bold text-white text-base">Minimal disclosure</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Services see only the fields an admin and student have permitted — nothing more. Pairwise IDs prevent cross-tracking.
+            </p>
+          </div>
+
+          <div class="space-y-2">
+            <div class="w-10 h-10 rounded-xl bg-amber-600/20 border border-amber-500/40 text-amber-400 flex items-center justify-center">
+              <i data-lucide="siren" class="w-5 h-5"></i>
+            </div>
+            <h3 class="font-bold text-white text-base">Smart alerts</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Flags impossible travel (rapid multi-city logins), brute-force attempts, and unauthorized account recovery.
+            </p>
+          </div>
+
+          <div class="space-y-2">
+            <div class="w-10 h-10 rounded-xl bg-purple-600/20 border border-purple-500/40 text-purple-400 flex items-center justify-center">
+              <i data-lucide="link" class="w-5 h-5"></i>
+            </div>
+            <h3 class="font-bold text-white text-base">Full transparency</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Append-only SHA-256 hash-chained audit logs. Students see their access trail; admins verify cryptographic integrity.
+            </p>
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- TAB 2: LIVE DIGITAL STUDENT ID CARD VIEW -->
+    <!-- ============================================================== -->
+    <section id="tab-digitalIdCard" class="tab-content hidden space-y-8">
+      
+      <div class="text-center max-w-2xl mx-auto space-y-2">
+        <span class="px-3 py-1 rounded-full text-xs font-mono font-bold bg-blue-950 text-blue-300 border border-blue-800">
+          CAMPUS TRUST ID PASS
+        </span>
+        <h2 class="text-3xl font-extrabold text-white">Your Live University Identity Pass</h2>
+        <p class="text-sm text-slate-400">Cryptographically signed token refreshes every 30 seconds for physical and digital campus access.</p>
+      </div>
+
+      <!-- Center ID Card -->
+      <div class="max-w-md mx-auto">
+        <div class="student-id-card rounded-3xl p-8 text-white space-y-6">
+          
+          <!-- Card Header with University Logo -->
+          <div class="flex items-center justify-between pb-4 border-b border-slate-700/60">
+            <div class="flex items-center gap-2.5">
+              <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-700 to-cyan-500 flex items-center justify-center font-bold text-white shadow-md">
+                <i data-lucide="shield-check" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <span class="font-extrabold text-base tracking-tight">Campus<span class="text-cyan-400">ID</span></span>
+                <p class="text-[10px] text-slate-400 font-mono">NATIONAL UNIVERSITY</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <span id="cardRoleBadge" class="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-blue-950 text-blue-300 border border-blue-800">
+                STUDENT
+              </span>
+            </div>
+          </div>
+
+          <!-- Student Profile & Photo Area -->
+          <div class="flex items-center gap-4">
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 flex items-center justify-center text-2xl font-black text-white shadow-lg shrink-0">
+              <span id="cardAvatarInitial">A</span>
+            </div>
+            <div class="space-y-0.5">
+              <h3 id="cardStudentName" class="text-xl font-bold text-white">Aanya Sharma</h3>
+              <p id="cardStudentProgram" class="text-xs text-slate-300">B.Tech Computer Science (3rd Year)</p>
+              <div class="flex items-center gap-3 text-xs text-slate-400 font-mono pt-1">
+                <span>Roll: <strong id="cardRollNo" class="text-white">CS2024001</strong></span>
+                <span>•</span>
+                <span>Room: <strong id="cardHostelRoom" class="text-cyan-300">Block-C 304</strong></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live QR Code Card Component -->
+          <div class="bg-slate-900/95 rounded-2xl p-5 border border-slate-700/80 space-y-3 shadow-xl">
+            <div class="flex items-center justify-center">
+              <div class="w-44 h-44 bg-white p-3 rounded-2xl flex items-center justify-center shadow-lg">
+                <img id="cardLiveQrImage" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=CAMPUSID-ROTATING-TOKEN-ACTIVE" alt="Live QR" class="w-full h-full" />
+              </div>
+            </div>
+            <div class="text-center space-y-1">
+              <div class="flex items-center justify-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 pulse-green"></span>
+                <span class="text-xs font-bold text-white">Single-Use Signed Token Active</span>
+              </div>
+              <p id="cardQrSecondsText" class="text-xs text-slate-400 font-mono">Refreshes in 24s · Single use</p>
+              
+              <!-- Progress Bar -->
+              <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden mt-2">
+                <div id="cardQrProgressBar" class="bg-gradient-to-r from-blue-500 to-cyan-400 h-full w-4/5 rounded-full transition-all duration-1000 ease-linear"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card Footer Metadata -->
+          <div class="flex items-center justify-between text-[11px] text-slate-400 font-mono pt-2 border-t border-slate-700/60">
+            <span>Valid till: <strong class="text-slate-200">30 Jun 2027</strong></span>
+            <span class="text-emerald-400 font-bold">STATUS: ENROLLED ✓</span>
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- TAB 3: STAFF SCAN & GO (VERIFIER SIMULATOR) -->
+    <!-- ============================================================== -->
+    <section id="tab-staffScanner" class="tab-content hidden space-y-8">
+      
+      <div class="text-center max-w-2xl mx-auto space-y-2">
+        <span class="px-3 py-1 rounded-full text-xs font-mono font-bold bg-amber-950 text-amber-300 border border-amber-800">
+          STAFF SCANNER & TERMINAL
+        </span>
+        <h2 class="text-3xl font-extrabold text-white">Staff Scan & Go Station</h2>
+        <p class="text-sm text-slate-400">Simulate a campus staff member or turnstile scanner verifying a student's digital ID.</p>
+      </div>
+
+      <div class="max-w-2xl mx-auto glass-panel rounded-3xl p-6 sm:p-8 space-y-6">
+        
+        <!-- Step 1: Select Verifier Service -->
+        <div class="space-y-3">
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 font-mono">
+            1. Select Your Staff Station / Service:
+          </label>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <button onclick="setScannerService('library')" id="scanBtn-library" class="p-3 rounded-xl border border-blue-500 bg-blue-950/60 text-white text-xs font-bold text-center transition">
+              <i data-lucide="book-open" class="w-5 h-5 mx-auto mb-1 text-blue-400"></i>
+              Library
+            </button>
+            <button onclick="setScannerService('hostel')" id="scanBtn-hostel" class="p-3 rounded-xl border border-slate-800 bg-slate-900 text-slate-400 text-xs font-bold text-center hover:text-white transition">
+              <i data-lucide="home" class="w-5 h-5 mx-auto mb-1 text-purple-400"></i>
+              Hostel Turnstile
+            </button>
+            <button onclick="setScannerService('exam-fees')" id="scanBtn-exam-fees" class="p-3 rounded-xl border border-slate-800 bg-slate-900 text-slate-400 text-xs font-bold text-center hover:text-white transition">
+              <i data-lucide="credit-card" class="w-5 h-5 mx-auto mb-1 text-emerald-400"></i>
+              Exam Clearance
+            </button>
+            <button onclick="setScannerService('gate')" id="scanBtn-gate" class="p-3 rounded-xl border border-slate-800 bg-slate-900 text-slate-400 text-xs font-bold text-center hover:text-white transition">
+              <i data-lucide="door-closed" class="w-5 h-5 mx-auto mb-1 text-amber-400"></i>
+              Main Gate Pass
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 2: Trigger Scan Action -->
+        <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+          <div class="flex items-center justify-between text-xs font-mono">
+            <span class="text-slate-400">Target QR Token:</span>
+            <span class="text-cyan-400 font-bold">CAMPUSID-LIVE-ROTATING-TOKEN</span>
+          </div>
+          <button onclick="simulateStaffScan()" class="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm shadow-lg flex items-center justify-center gap-2 transition">
+            <i data-lucide="scan-line" class="w-5 h-5"></i>
+            <span>Scan Student QR Token</span>
+          </button>
+        </div>
+
+        <!-- Step 3: Scan Verification Result Screen -->
+        <div id="scannerResultBox" class="p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-mono text-slate-400">Scan Status:</span>
+            <span id="scanStatusBadge" class="px-3 py-1 rounded-full text-xs font-bold font-mono bg-emerald-950 text-emerald-400 border border-emerald-800">
+              READY TO SCAN
+            </span>
+          </div>
+
+          <div id="scanDetailsContent" class="space-y-2 text-xs">
+            <p class="text-slate-500 text-center py-4">Click "Scan Student QR Token" above to simulate real-time station verification.</p>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- TAB 4: TRUST & PRIVACY DASHBOARD (DPDP ACT 2023) -->
+    <!-- ============================================================== -->
+    <section id="tab-privacyDashboard" class="tab-content hidden space-y-6">
+      
+      <!-- Top Profile Bar -->
+      <div class="glass-panel rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div class="flex items-center gap-4">
+          <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-extrabold text-2xl shadow-xl">
+            <span id="dashAvatarLetter">A</span>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 id="dashUserName" class="text-xl font-bold text-white">Aanya Sharma</h2>
+              <span id="dashUserRoleBadge" class="px-2 py-0.5 rounded text-xs font-mono uppercase bg-blue-950 text-blue-300 border border-blue-800">Student</span>
+              <span id="dashEnrolledBadge" class="px-2 py-0.5 rounded text-xs font-medium bg-emerald-950 text-emerald-400 border border-emerald-800">Enrolled</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400 mt-1">
+              <span>Roll: <strong id="dashRollNo" class="text-slate-200">CS2024001</strong></span>
+              <span>•</span>
+              <span>Email: <span id="dashEmail" class="text-slate-200">aanya.sharma@university.edu</span></span>
+              <span>•</span>
+              <span>Program: <span id="dashProgram" class="text-slate-200">B.Tech Computer Science</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="text-right text-xs bg-slate-900/80 px-3 py-2 rounded-xl border border-slate-800">
+            <p class="text-slate-400 text-[10px] font-mono">Immutable Internal ID (FR-1.2)</p>
+            <p id="dashInternalId" class="font-mono text-cyan-400 text-xs">loading...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grid: Consents Manager (FR-5) & Active Sessions (FR-6) -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- 4.1 PRIVACY & CONSENT DASHBOARD (FR-5.1 - FR-5.5) -->
+        <div class="glass-panel rounded-2xl p-6 space-y-4">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div>
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <i data-lucide="eye-off" class="w-4 h-4 text-cyan-400"></i>
+                <span>Privacy & Attribute Consent Manager</span>
+              </h3>
+              <p class="text-xs text-slate-400 mt-0.5">Control which campus services can access minimal claims</p>
+            </div>
+            <span class="text-[11px] px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-mono">DPDP 2023</span>
+          </div>
+
+          <div id="consentsListContainer" class="space-y-3">
+            <p class="text-xs text-slate-500 py-4 text-center">Loading granted service consents...</p>
+          </div>
+
+          <div class="p-3 bg-slate-900/70 border border-slate-800 rounded-xl text-[11px] text-slate-400 flex items-start gap-2">
+            <i data-lucide="info" class="w-4 h-4 text-cyan-400 shrink-0 mt-0.5"></i>
+            <div>
+              <strong>Pairwise Isolation Active:</strong> Each campus service receives a unique, pseudonymous pairwise identifier. Relying parties cannot cross-correlate your activities across campus systems.
+            </div>
+          </div>
+        </div>
+
+        <!-- 4.2 ACTIVE SESSIONS & DEVICE DASHBOARD (FR-6.1 - FR-6.4) -->
+        <div class="glass-panel rounded-2xl p-6 space-y-4">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div>
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <i data-lucide="laptop" class="w-4 h-4 text-blue-400"></i>
+                <span>Active Sessions & Device Registry</span>
+              </h3>
+              <p class="text-xs text-slate-400 mt-0.5">Short-lived access tokens (15m) + Rotating refresh tokens</p>
+            </div>
+            <button id="terminateAllSessionsBtn" class="px-2.5 py-1 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 border border-rose-800 text-rose-300 text-xs font-medium transition">
+              Terminate All Devices
+            </button>
+          </div>
+
+          <div id="sessionsListContainer" class="space-y-3 max-h-[360px] overflow-y-auto pr-1">
+            <p class="text-xs text-slate-500 py-4 text-center">Loading active user sessions...</p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 4.3 PERSONAL ACCESS AUDIT HISTORY (FR-7.4) -->
+      <div class="glass-panel rounded-2xl p-6 space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div>
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <i data-lucide="history" class="w-4 h-4 text-emerald-400"></i>
+              <span>My Personal Identity Access History (FR-7.4)</span>
+            </h3>
+            <p class="text-xs text-slate-400 mt-0.5">Audit log of all authentications, consent events, and token issuances for your identity</p>
+          </div>
+          <button id="refreshAccessHistoryBtn" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition" title="Refresh Log">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-900 text-slate-400 font-mono uppercase text-[10px] border-b border-slate-800">
+              <tr>
+                <th class="py-2.5 px-3">Block #</th>
+                <th class="py-2.5 px-3">Timestamp</th>
+                <th class="py-2.5 px-3">Action Event</th>
+                <th class="py-2.5 px-3">Service / Target</th>
+                <th class="py-2.5 px-3">IP & Device</th>
+              </tr>
+            </thead>
+            <tbody id="accessHistoryTableBody" class="divide-y divide-slate-800/60 font-mono text-slate-300">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- TAB 5: DEMO SERVICE A - CAMPUS CENTRAL LIBRARY -->
+    <!-- ============================================================== -->
+    <section id="tab-serviceLibrary" class="tab-content hidden space-y-6">
+      
+      <!-- Relying Party Banner -->
+      <div class="glass-panel rounded-2xl p-6 border-l-4 border-l-blue-500 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-blue-950 text-blue-300 border border-blue-800">Relying Party Service A</span>
+            <span class="text-xs text-slate-400">OIDC Client ID: <code class="text-slate-300">library</code></span>
+          </div>
+          <h2 class="text-xl font-bold text-white mt-1">Campus Central Library System</h2>
+          <p class="text-xs text-slate-400 mt-0.5">Academic book loans, course reserve collections, study room access.</p>
+        </div>
+        <div id="librarySsoStatusBadge" class="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono">
+          Checking SSO Session...
+        </div>
+      </div>
+
+      <!-- Minimal Claims Inspector -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Left Column: Received Claims -->
+        <div class="glass-panel rounded-2xl p-6 space-y-3">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+            <span>Minimal Claims Received by Library</span>
+          </h3>
+          <p class="text-[11px] text-slate-400">The library only sees registered minimal claims. Raw birthdates, personal phone, and passwords are never exposed.</p>
+          
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2 text-xs font-mono">
+            <div>
+              <span class="text-slate-500">Pairwise Subject (PPID):</span>
+              <p id="libClaimSub" class="text-cyan-400 font-bold truncate">lib-loading...</p>
+            </div>
+            <div>
+              <span class="text-slate-500">Full Name:</span>
+              <p id="libClaimName" class="text-white">Aanya Sharma</p>
+            </div>
+            <div>
+              <span class="text-slate-500">Is Enrolled (Boolean Claim):</span>
+              <p id="libClaimEnrolled" class="text-emerald-400 font-bold">true</p>
+            </div>
+            <div>
+              <span class="text-slate-500">Role Authority:</span>
+              <p id="libClaimRole" class="text-indigo-400">Student (Max 3 books)</p>
+            </div>
+          </div>
+
+          <div class="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-800/60 text-[11px] text-emerald-300">
+            ✓ 0 raw demographic data leaked to Library
+          </div>
+        </div>
+
+        <!-- Center & Right Columns: Library Actions & Loans -->
+        <div class="lg:col-span-2 space-y-6">
+          
+          <div class="glass-panel rounded-2xl p-6 space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <i data-lucide="book-marked" class="w-4 h-4 text-blue-400"></i>
+                <span>Circulation Desk — Active Book Loans</span>
+              </h3>
+              <span id="libQuotaCounter" class="text-xs font-mono px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-700">
+                2 / 3 Books Borrowed
+              </span>
+            </div>
+
+            <div id="libLoansContainer" class="space-y-2">
+            </div>
+
+            <form id="libBorrowForm" class="pt-3 border-t border-slate-800 flex flex-col sm:flex-row gap-2">
+              <select id="libBookSelect" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                <option value="Artificial Intelligence: A Modern Approach (4th Ed)|978-0134610993">Artificial Intelligence: A Modern Approach (Stuart Russell)</option>
+                <option value="Compilers: Principles, Techniques, and Tools|978-0321486813">Compilers: Principles, Techniques, and Tools (Dragon Book)</option>
+                <option value="Computer Networks: A Systems Approach|978-0128182000">Computer Networks: A Systems Approach (Peterson & Davie)</option>
+                <option value="Operating System Concepts (10th Ed)|978-1119800361">Operating System Concepts (Silberschatz)</option>
+              </select>
+              <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs px-4 py-2 rounded-xl transition flex items-center justify-center gap-1.5 shadow-md">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                <span>Borrow Book</span>
+              </button>
+            </form>
+          </div>
+
+          <div id="libFacultyPerkCard" class="glass-panel rounded-2xl p-4 border border-indigo-900/60 bg-indigo-950/20 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <i data-lucide="graduation-cap" class="w-5 h-5 text-indigo-400"></i>
+              <div>
+                <h4 class="text-xs font-bold text-indigo-200">Faculty Course Reserves Privilege</h4>
+                <p class="text-[11px] text-slate-400">Only accounts with role <code class="text-indigo-300">faculty</code> can reserve restricted research monographs.</p>
+              </div>
+            </div>
+            <button id="libReserveMonographBtn" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition">
+              Reserve Monograph
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- TAB 6: DEMO SERVICE B - HOSTEL & HOUSING PORTAL -->
+    <!-- ============================================================== -->
+    <section id="tab-serviceHostel" class="tab-content hidden space-y-6">
+      
+      <!-- Relying Party Banner -->
+      <div class="glass-panel rounded-2xl p-6 border-l-4 border-l-amber-500 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-amber-950 text-amber-300 border border-amber-800">Relying Party Service B</span>
+            <span class="text-xs text-slate-400">OIDC Client ID: <code class="text-slate-300">hostel</code></span>
+          </div>
+          <h2 class="text-xl font-bold text-white mt-1">Campus Hostel & Residential Housing</h2>
+          <p class="text-xs text-slate-400 mt-0.5">Automated wing access control, nightly gate passes, time-bound residency verification.</p>
+        </div>
+        <div class="px-3 py-1 rounded-full bg-emerald-950 border border-emerald-800 text-emerald-400 text-xs font-mono">
+          SSO Session Reused (0 Password Prompts)
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <div class="glass-panel rounded-2xl p-6 space-y-3">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <i data-lucide="shield" class="w-4 h-4 text-amber-400"></i>
+            <span>Hostel Attributes & Unlinkability</span>
+          </h3>
+          <p class="text-[11px] text-slate-400">Notice that the Hostel pairwise subject below is completely different from the Library pairwise subject!</p>
+
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2 text-xs font-mono">
+            <div>
+              <span class="text-slate-500">Hostel Pairwise ID:</span>
+              <p id="hostelClaimSub" class="text-amber-400 font-bold truncate">hst-loading...</p>
+            </div>
+            <div>
+              <span class="text-slate-500">Assigned Wing & Room:</span>
+              <p id="hostelClaimRoom" class="text-white font-bold">Block-C / Room 304</p>
+            </div>
+            <div>
+              <span class="text-slate-500">Active Resident Status:</span>
+              <p id="hostelClaimResident" class="text-emerald-400 font-bold">VERIFIED_ACTIVE</p>
+            </div>
+            <div>
+              <span class="text-slate-500">Time-Bound Tenancy (FR-4.3):</span>
+              <p id="hostelClaimTenancy" class="text-slate-300">Expires: Spring 2027</p>
+            </div>
+          </div>
+
+          <div class="p-2.5 rounded-lg bg-amber-950/40 border border-amber-800/60 text-[11px] text-amber-300">
+            🔒 Relying party cannot cross-reference or correlate student identity with the Library.
+          </div>
+        </div>
+
+        <div class="lg:col-span-2 space-y-6">
+          <div class="glass-panel rounded-2xl p-6 space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <i data-lucide="qr-code" class="w-4 h-4 text-amber-400"></i>
+                <span>Digital Night Entry Gate Pass (Time-Bound RBAC FR-4.3)</span>
+              </h3>
+              <span class="px-2 py-0.5 rounded text-xs font-mono bg-emerald-950 text-emerald-400 border border-emerald-800">ACCESS GRANTED</span>
+            </div>
+
+            <div class="flex flex-col sm:flex-row items-center gap-6 p-4 bg-slate-900/80 rounded-xl border border-slate-800">
+              <div class="w-28 h-28 bg-white p-2 rounded-xl flex items-center justify-center shadow-lg">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=CAMPUS-HOSTEL-GATE-PASS-AUTH-2026" alt="Gate QR" class="w-full h-full" />
+              </div>
+              <div class="space-y-1.5 text-xs">
+                <p class="font-bold text-white">Residential Turnstile Authorization</p>
+                <p class="text-slate-400 text-[11px]">Valid for Main Gate, Hostel Block-C Elevator, and Dining Commons.</p>
+                <div class="flex items-center gap-2 pt-1 font-mono text-[11px] text-slate-300">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 pulse-green"></span>
+                  <span>Turnstile Sensor Status: Ready for Tap</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="pt-2 flex justify-end">
+              <button id="hostelRequestLeaveBtn" class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold transition">
+                Generate Weekend Out-Pass
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- TAB 7: DEMO SERVICE C - EXAMINATION & FEE PORTAL -->
+    <!-- ============================================================== -->
+    <section id="tab-serviceExamFees" class="tab-content hidden space-y-6">
+      
+      <!-- Relying Party Banner -->
+      <div class="glass-panel rounded-2xl p-6 border-l-4 border-l-emerald-500 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-emerald-950 text-emerald-300 border border-emerald-800">Relying Party Service C</span>
+            <span class="text-xs text-slate-400">OIDC Client ID: <code class="text-slate-300">exam-fees</code></span>
+          </div>
+          <h2 class="text-xl font-bold text-white mt-1">Examination Clearance & Fee Portal</h2>
+          <p class="text-xs text-slate-400 mt-0.5">Semester fee clearance, adaptive step-up authentication, exam hall tickets.</p>
+        </div>
+        <div class="px-3 py-1 rounded-full bg-indigo-950 border border-indigo-800 text-indigo-300 text-xs font-mono">
+          Adaptive Step-Up Shield (FR-2.4)
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <div class="glass-panel rounded-2xl p-6 space-y-4">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <i data-lucide="file-check" class="w-4 h-4 text-emerald-400"></i>
+            <span>Exam Seating Status</span>
+          </h3>
+
+          <div id="examSeatingCard" class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-400">Eligibility Status:</span>
+              <span id="examStatusBadge" class="px-2 py-0.5 rounded text-[11px] font-bold font-mono bg-amber-950 text-amber-300 border border-amber-800">
+                BLOCKED (FEE DUE)
+              </span>
+            </div>
+            <p id="examStatusDesc" class="text-xs text-slate-400">
+              Semester tuition fees must be cleared before the Spring 2026 Hall Seating Pass can be generated.
+            </p>
+          </div>
+
+          <div class="p-3 bg-indigo-950/40 border border-indigo-800/60 rounded-xl text-xs text-indigo-300 space-y-1">
+            <p class="font-bold">FR-2.4 Adaptive Step-Up Rule:</p>
+            <p class="text-[11px] text-slate-400">Financial transactions and recovery modifications require real-time TOTP step-up authentication even within an active SSO session.</p>
+          </div>
+        </div>
+
+        <div class="lg:col-span-2 glass-panel rounded-2xl p-6 space-y-4">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <i data-lucide="receipt" class="w-4 h-4 text-emerald-400"></i>
+              <span>Semester Tuition Invoice</span>
+            </h3>
+            <span class="text-xs font-mono text-slate-400">Invoice: INV-2026-CS3</span>
+          </div>
+
+          <div class="bg-slate-900 rounded-xl p-4 border border-slate-800 space-y-3">
+            <div class="flex justify-between text-xs py-1 border-b border-slate-800">
+              <span class="text-slate-300">Spring 2026 Tuition & Instruction</span>
+              <span class="font-mono text-white">$1,100.00</span>
+            </div>
+            <div class="flex justify-between text-xs py-1 border-b border-slate-800">
+              <span class="text-slate-300">Advanced Computing Systems Lab Fee</span>
+              <span class="font-mono text-white">$150.00</span>
+            </div>
+            <div class="flex justify-between text-sm font-bold pt-1">
+              <span class="text-white">Total Amount Due</span>
+              <span id="feeTotalAmount" class="font-mono text-emerald-400 text-lg">$1,250.00</span>
+            </div>
+          </div>
+
+          <div id="feePaymentActionSection" class="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="text-xs text-slate-400">
+              <span class="inline-flex items-center gap-1 text-amber-400 font-medium">
+                <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i>
+                Requires Adaptive Re-Authentication
+              </span>
+            </div>
+            <button id="payFeeStepUpBtn" class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm shadow-lg shadow-emerald-900/30 flex items-center justify-center gap-2 transition">
+              <i data-lucide="lock" class="w-4 h-4"></i>
+              <span>Authorize & Pay Fee ($1,250)</span>
+            </button>
+          </div>
+
+          <div id="feePaidReceiptBanner" class="hidden p-4 rounded-xl bg-emerald-950/60 border border-emerald-800 text-emerald-300 space-y-2">
+            <div class="flex items-center gap-2 font-bold text-sm">
+              <i data-lucide="badge-check" class="w-5 h-5 text-emerald-400"></i>
+              <span>Payment Successfully Processed via Step-Up Authentication!</span>
+            </div>
+            <p class="text-xs text-slate-300">
+              Transaction Hash: <code id="feeTxHash" class="font-mono text-cyan-300 font-bold select-all">0x...</code>
+            </p>
+            <p class="text-[11px] text-emerald-400">
+              ✓ Exam Seating Pass unlocked and verified on the Student Hall Ticket Registry!
+            </p>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- TAB 8: IDENTITY & AUTH HUB (SIGN IN, ACTIVATION, RECOVERY) -->
+    <!-- ============================================================== -->
+    <section id="tab-authHub" class="tab-content hidden space-y-6">
+      
+      <div class="flex justify-center">
+        <div class="inline-flex p-1 bg-slate-900/90 border border-slate-800 rounded-xl">
+          <button id="authSubTab-login" class="px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-blue-600 text-white shadow-sm transition">
+            Sign In with MFA
+          </button>
+          <button id="authSubTab-activate" class="px-5 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white transition">
+            First-Time Activation
+          </button>
+          <button id="authSubTab-recovery" class="px-5 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white transition">
+            Self-Serve Recovery
+          </button>
+        </div>
+      </div>
+
+      <!-- 8.1 SIGN IN VIEW -->
+      <div id="authView-login" class="max-w-md mx-auto glass-panel rounded-2xl p-6 sm:p-8 shadow-2xl">
+        <div class="text-center mb-6">
+          <div class="inline-flex p-3 rounded-2xl bg-blue-600/10 border border-blue-500/20 text-blue-400 mb-2">
+            <i data-lucide="shield" class="w-8 h-8"></i>
+          </div>
+          <h2 class="text-xl font-bold text-white tracking-tight">Identity Provider Sign In</h2>
+          <p class="text-xs text-slate-400 mt-1">Single sign-on entry for all participating campus portals</p>
+        </div>
+
+        <div id="loginLockoutAlert" class="hidden mb-4 p-3 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-300 text-xs flex items-start gap-2.5">
+          <i data-lucide="alert-octagon" class="w-4 h-4 text-rose-400 shrink-0 mt-0.5"></i>
+          <div id="loginLockoutMsg">Account temporarily locked due to failed logins.</div>
+        </div>
+
+        <form id="loginForm" class="space-y-4">
+          <div id="loginStepPassword" class="space-y-4">
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">Institutional Email</label>
+              <div class="relative">
+                <i data-lucide="mail" class="w-4 h-4 text-slate-500 absolute left-3 top-3"></i>
+                <input type="email" id="loginEmail" required placeholder="aanya.sharma@university.edu"
+                       class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition" />
+              </div>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="block text-xs font-medium text-slate-300">Master Password</label>
+                <span class="text-[10px] text-slate-500">Argon2id Hashed</span>
+              </div>
+              <div class="relative">
+                <i data-lucide="key-round" class="w-4 h-4 text-slate-500 absolute left-3 top-3"></i>
+                <input type="password" id="loginPassword" required placeholder="••••••••••••"
+                       class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition" />
+              </div>
+            </div>
+
+            <div class="pt-2 border-t border-slate-800">
+              <label class="block text-[11px] text-slate-400 mb-1">Simulated Session Context (FR-6.4 / FR-7.5):</label>
+              <select id="loginLocationContext" class="w-full bg-slate-900/80 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none">
+                <option value="Campus Wi-Fi - Academic Quad">Campus Wi-Fi - Academic Quad (Regular)</option>
+                <option value="Hostel Wing C - Resident LAN">Hostel Wing C - Resident LAN (Regular)</option>
+                <option value="Remote City - Mumbai Home Broadband">Remote City - Mumbai Broadband</option>
+                <option value="New York, US - Foreign IP (Anomaly Test)">New York, US - Foreign IP (Triggers Impossible Travel!)</option>
+              </select>
+            </div>
+
+            <button type="submit" id="loginSubmitBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30">
+              <span>Continue with Password</span>
+              <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+          <div id="loginStepMfa" class="hidden space-y-4">
+            <div class="p-3 bg-indigo-950/50 border border-indigo-800/80 rounded-xl text-xs text-indigo-300">
+              <p class="font-semibold text-white mb-0.5">Two-Factor Authentication Required</p>
+              <p>Enter the 6-digit code from your authenticator app or an 8-character backup code.</p>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">Authenticator Code / Backup Code</label>
+              <input type="text" id="loginMfaCode" placeholder="123456 or CAMP-BK01" maxlength="12"
+                     class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-center text-lg font-mono tracking-widest text-white focus:outline-none focus:border-blue-500 transition" />
+            </div>
+
+            <div class="flex gap-2">
+              <button type="button" id="loginBackToPwBtn" class="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs py-2 rounded-xl transition">
+                Back
+              </button>
+              <button type="button" id="loginVerifyMfaBtn" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs py-2 rounded-xl transition flex items-center justify-center gap-2 shadow-lg">
+                <i data-lucide="check" class="w-4 h-4"></i>
+                <span>Verify & Sign In</span>
+              </button>
+            </div>
+
+            <button type="button" id="autoFillCurrentTotpBtn" class="w-full text-center text-[11px] text-cyan-400 hover:underline">
+              ⚡ Auto-fill code from active TOTP Companion
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- 8.2 FIRST-TIME ACCOUNT ACTIVATION VIEW -->
+      <div id="authView-activate" class="hidden max-w-lg mx-auto glass-panel rounded-2xl p-6 sm:p-8 shadow-2xl">
+        <div class="text-center mb-6">
+          <div class="inline-flex p-3 rounded-2xl bg-cyan-600/10 border border-cyan-500/20 text-cyan-400 mb-2">
+            <i data-lucide="user-plus" class="w-8 h-8"></i>
+          </div>
+          <h2 class="text-xl font-bold text-white tracking-tight">First-Time Identity Activation</h2>
+          <p class="text-xs text-slate-400 mt-1">Activate your university digital identity with your roster invite code</p>
+        </div>
+
+        <form id="activateForm" class="space-y-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Institutional Email</label>
+            <input type="email" id="activateEmail" required placeholder="kabir.patel@university.edu"
+                   class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 transition" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Activation Invitation Code (One-Time)</label>
+            <input type="text" id="activateCode" required placeholder="ACT-CAMPUS-2026"
+                   class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm font-mono text-cyan-300 focus:outline-none focus:border-cyan-500 transition" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Create Secure Master Password</label>
+            <input type="password" id="activatePassword" required placeholder="At least 8 chars"
+                   class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 transition" />
+            <p class="text-[10px] text-slate-500 mt-1">Argon2id hashing + Breached-password dictionary verification.</p>
+          </div>
+
+          <button type="submit" class="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold py-2.5 rounded-xl text-sm transition shadow-lg flex items-center justify-center gap-2">
+            <i data-lucide="key" class="w-4 h-4"></i>
+            <span>Set Password & Setup TOTP MFA</span>
+          </button>
+        </form>
+
+        <div id="activateMfaSection" class="hidden mt-6 pt-6 border-t border-slate-800 space-y-4">
+          <div class="text-center">
+            <h4 class="text-sm font-bold text-white">Enroll Authenticator App</h4>
+            <p class="text-xs text-slate-400">Scan with Google Authenticator, Authy, or Apple Keychain</p>
+          </div>
+
+          <div class="flex justify-center">
+            <div class="p-3 bg-white rounded-xl shadow-lg">
+              <img id="activateQrImage" alt="TOTP QR Code" class="w-40 h-40" />
+            </div>
+          </div>
+
+          <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 text-center">
+            <p class="text-[10px] text-slate-400">Manual Setup Secret Key:</p>
+            <p id="activateSecretText" class="font-mono text-xs font-bold text-cyan-400 select-all"></p>
+          </div>
+
+          <div class="bg-amber-950/40 border border-amber-800/80 p-4 rounded-xl space-y-2">
+            <div class="flex items-center gap-2 text-amber-300 text-xs font-semibold">
+              <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+              <span>One-Time Backup Codes (Shown Once)</span>
+            </div>
+            <p class="text-[11px] text-slate-400">Store these codes safely. They allow self-serve recovery if your authenticator is lost.</p>
+            <div id="activateBackupCodesGrid" class="grid grid-cols-2 gap-2 font-mono text-xs text-amber-200 bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <label class="block text-xs font-medium text-slate-300">Enter code generated by app to verify setup:</label>
+            <div class="flex gap-2">
+              <input type="text" id="activateVerifyCode" placeholder="123456" maxlength="6"
+                     class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-center text-sm font-mono text-white focus:outline-none" />
+              <button type="button" id="activateFinalizeBtn" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 rounded-xl transition">
+                Confirm & Activate
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 8.3 SELF-SERVE ACCOUNT RECOVERY VIEW -->
+      <div id="authView-recovery" class="hidden max-w-lg mx-auto glass-panel rounded-2xl p-6 sm:p-8 shadow-2xl">
+        <div class="text-center mb-6">
+          <div class="inline-flex p-3 rounded-2xl bg-amber-600/10 border border-amber-500/20 text-amber-400 mb-2">
+            <i data-lucide="life-buoy" class="w-8 h-8"></i>
+          </div>
+          <h2 class="text-xl font-bold text-white tracking-tight">Self-Service Account Recovery</h2>
+          <p class="text-xs text-slate-400 mt-1">Lost your authenticator device? Recover access using a verified backup code.</p>
+        </div>
+
+        <form id="recoveryForm" class="space-y-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Institutional Email</label>
+            <input type="email" id="recoveryEmail" required placeholder="aanya.sharma@university.edu"
+                   class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500 transition" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">One-Time Backup Code</label>
+            <input type="text" id="recoveryBackupCode" required placeholder="CAMP-BK01" maxlength="12"
+                   class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm font-mono text-amber-300 focus:outline-none focus:border-amber-500 transition" />
+            <p class="text-[10px] text-slate-500 mt-1">Codes are stored cryptographically hashed and consumed upon use.</p>
+          </div>
+
+          <button type="submit" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2.5 rounded-xl text-sm transition shadow-lg flex items-center justify-center gap-2">
+            <i data-lucide="unlock" class="w-4 h-4"></i>
+            <span>Verify Backup Code & Initiate Cooling-Off</span>
+          </button>
+        </form>
+
+        <div id="recoveryCoolingOffBanner" class="hidden mt-6 p-4 rounded-xl bg-slate-900 border border-amber-700/80 space-y-3">
+          <div class="flex items-start gap-2.5">
+            <i data-lucide="shield-alert" class="w-5 h-5 text-amber-400 shrink-0 mt-0.5"></i>
+            <div>
+              <h4 class="text-xs font-bold text-amber-300 uppercase tracking-wider">Cooling-Off Period Active (FR-8.3)</h4>
+              <p class="text-xs text-slate-300 mt-1">
+                A 24-hour security cooling-off notice has been dispatched to all registered contact points.
+              </p>
+            </div>
+          </div>
+
+          <div class="p-2.5 rounded-lg bg-rose-950/40 border border-rose-900/60 flex items-center justify-between text-xs">
+            <span class="text-rose-200">Suspicious recovery? Cancel immediately:</span>
+            <button type="button" id="recoveryCancelBtn" class="px-2.5 py-1 rounded bg-rose-700 hover:bg-rose-600 text-white text-[11px] font-medium transition">
+              Cancel Recovery
+            </button>
+          </div>
+
+          <div class="pt-2 border-t border-slate-800 space-y-2">
+            <p class="text-[11px] text-emerald-400 font-medium">✨ Demo Mode: Bypass cooling-off & finalize recovery:</p>
+            <input type="password" id="recoveryNewPassword" placeholder="Set New Password (Optional)"
+                   class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white" />
+            <button type="button" id="recoveryFinalizeBtn" class="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-lg">
+              <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+              <span>Finalize Recovery & Revoke All Active Sessions (FR-8.4)</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- TAB 9: CAMPUS SECURITY ADMIN CONSOLE & CRYPTOGRAPHIC AUDIT -->
+    <!-- ============================================================== -->
+    <section id="tab-adminConsole" class="tab-content hidden space-y-6">
+      
+      <!-- Top Admin Banner -->
+      <div class="glass-panel rounded-2xl p-6 border-l-4 border-l-purple-500 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-purple-950 text-purple-300 border border-purple-800">Security Operations Center</span>
+            <span class="text-xs text-slate-400">Role: <strong class="text-white">Security Admin (Priya Nair)</strong></span>
+          </div>
+          <h2 class="text-xl font-bold text-white mt-1">CampusGate Identity & Trust Admin Console</h2>
+          <p class="text-xs text-slate-400 mt-0.5">Manage users, dynamic RBAC, tamper-evident hash-chained audit logs, and anomaly detection.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="adminImportRosterModalBtn" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+            <i data-lucide="upload-cloud" class="w-4 h-4 text-purple-400"></i>
+            <span>Import Student Roster (FR-1.1)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Security Anomaly Alerts Center (FR-7.5, FR-9.2) -->
+      <div class="glass-panel rounded-2xl p-6 space-y-3">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <i data-lucide="siren" class="w-4 h-4 text-rose-400"></i>
+            <span>Security Anomaly & Incident Alerts (FR-7.5)</span>
+          </h3>
+          <span id="adminAlertsCountBadge" class="px-2 py-0.5 rounded-full text-xs font-mono font-bold bg-rose-950 text-rose-300 border border-rose-800">0 Open Alerts</span>
+        </div>
+
+        <div id="adminAlertsContainer" class="space-y-2">
+          <p class="text-xs text-slate-500 py-2 text-center">No open anomaly alerts. System running nominally.</p>
+        </div>
+      </div>
+
+      <!-- Cryptographic Hash-Chained Audit Trail (FR-7.1 - FR-7.3) -->
+      <div class="glass-panel rounded-2xl p-6 space-y-4">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-3 border-b border-slate-800">
+          <div>
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <i data-lucide="link" class="w-4 h-4 text-cyan-400"></i>
+              <span>Append-Only Tamper-Evident Audit Chain (FR-7.3)</span>
+            </h3>
+            <p class="text-xs text-slate-400 mt-0.5">Cryptographic SHA-256 hash chaining: <code>H(n) = SHA256(H(n-1) + block_payload)</code></p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="adminVerifyChainBtn" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-emerald-950/40">
+              <i data-lucide="shield-check" class="w-4 h-4"></i>
+              <span>Verify Chain Integrity</span>
+            </button>
+
+            <button id="adminTamperDemoBtn" class="px-3 py-1.5 rounded-xl bg-amber-600/80 hover:bg-amber-600 text-white text-xs font-bold transition flex items-center gap-1.5" title="Deliberately alter an entry in SQLite to test detection">
+              <i data-lucide="bug" class="w-4 h-4"></i>
+              <span>Simulate Tampering Attack</span>
+            </button>
+
+            <button id="adminRestoreDemoBtn" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition" title="Restore chain">
+              <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+
+        <div id="chainIntegrityResultBanner" class="p-3.5 rounded-xl bg-slate-900 border border-emerald-800/80 flex items-center justify-between text-xs">
+          <div class="flex items-center gap-3">
+            <span class="w-3 h-3 rounded-full bg-emerald-500 pulse-green shrink-0"></span>
+            <div>
+              <p class="font-bold text-emerald-400">Cryptographic Chain Verified 100% Intact</p>
+              <p class="text-[11px] text-slate-400 font-mono">Genesis to Head: 0 tampered entries detected. All hash pointers match.</p>
+            </div>
+          </div>
+          <span id="chainHeadHashText" class="hidden sm:inline font-mono text-[10px] text-slate-500 bg-slate-950 px-2 py-1 rounded">Head Hash: loading...</span>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-2 text-xs">
+          <input type="text" id="adminAuditSearch" placeholder="Search target, service, actor, or IP..."
+                 class="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-white focus:outline-none focus:border-cyan-500" />
+          <select id="adminAuditActionFilter" class="bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-slate-300 focus:outline-none">
+            <option value="">All Events</option>
+            <option value="AUTH.">Authentication Events</option>
+            <option value="CONSENT.">Consent Events</option>
+            <option value="ROLE.">Role Changes</option>
+            <option value="SESSION.">Session Management</option>
+            <option value="RECOVERY.">Recovery Events</option>
+            <option value="TOKEN.">Token Security</option>
+          </select>
+        </div>
+
+        <div class="overflow-x-auto max-h-[420px] overflow-y-auto">
+          <table class="w-full text-left text-xs font-mono">
+            <thead class="bg-slate-900 text-slate-400 uppercase text-[10px] sticky top-0 border-b border-slate-800 z-10">
+              <tr>
+                <th class="py-2.5 px-3">Seq #</th>
+                <th class="py-2.5 px-3">Previous Hash</th>
+                <th class="py-2.5 px-3">Block Hash</th>
+                <th class="py-2.5 px-3">Actor & Action</th>
+                <th class="py-2.5 px-3">Target / Service</th>
+                <th class="py-2.5 px-3">IP Address</th>
+              </tr>
+            </thead>
+            <tbody id="adminAuditTableBody" class="divide-y divide-slate-800/60 text-slate-300">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- User Directory & Dynamic RBAC Management -->
+      <div class="glass-panel rounded-2xl p-6 space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div>
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <i data-lucide="users" class="w-4 h-4 text-purple-400"></i>
+              <span>Campus Identity Directory & Role-Based Access Control</span>
+            </h3>
+            <p class="text-xs text-slate-400 mt-0.5">Role changes and suspensions take effect immediately across all relying campus services.</p>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-900 text-slate-400 font-mono uppercase text-[10px] border-b border-slate-800">
+              <tr>
+                <th class="py-2.5 px-3">Roll / ID</th>
+                <th class="py-2.5 px-3">Name & Email</th>
+                <th class="py-2.5 px-3">Current Role (RBAC)</th>
+                <th class="py-2.5 px-3">Status</th>
+                <th class="py-2.5 px-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="adminUsersTableBody" class="divide-y divide-slate-800/60 text-slate-300">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- TAB 10: PRD ACCEPTANCE DEMO SHOWCASE (1-CLICK TEST RUNNER) -->
+    <!-- ============================================================== -->
+    <section id="tab-demoShowcase" class="tab-content hidden space-y-6">
+      
+      <div class="glass-panel rounded-2xl p-6 border-l-4 border-l-amber-500">
+        <div class="flex items-center gap-2">
+          <span class="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-amber-950 text-amber-300 border border-amber-800">PRD Section 11 Demo Plan</span>
+          <span class="text-xs text-slate-400">8 Acceptance Criteria</span>
+        </div>
+        <h2 class="text-xl font-bold text-white mt-1">Automated Demo Plan & Acceptance Test Suite</h2>
+        <p class="text-xs text-slate-400 mt-0.5">
+          Execute and visually verify all 8 acceptance criteria outlined in the Product Requirements Document live on screen.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        <div class="glass-card p-5 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800">Criterion 1</span>
+            <span id="testStatus-1" class="text-xs font-mono text-slate-500">Ready</span>
+          </div>
+          <h4 class="text-sm font-bold text-white">1. Account Activation & MFA Enrollment</h4>
+          <p class="text-xs text-slate-400">Student receives invitation code, verifies institutional email, creates password, enrolls TOTP and receives 8 backup codes.</p>
+          <button onclick="runAcceptanceTest(1)" class="w-full py-1.5 rounded-lg bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/40 text-blue-300 text-xs font-semibold transition">
+            Run Test 1
+          </button>
+        </div>
+
+        <div class="glass-card p-5 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800">Criterion 2</span>
+            <span id="testStatus-2" class="text-xs font-mono text-slate-500">Ready</span>
+          </div>
+          <h4 class="text-sm font-bold text-white">2. Seamless SSO across Multiple Services</h4>
+          <p class="text-xs text-slate-400">Student signs into Library (Service A) and seamlessly opens Hostel Portal (Service B) with 0 password re-prompts.</p>
+          <button onclick="runAcceptanceTest(2)" class="w-full py-1.5 rounded-lg bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/40 text-blue-300 text-xs font-semibold transition">
+            Run Test 2
+          </button>
+        </div>
+
+        <div class="glass-card p-5 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">Criterion 3</span>
+            <span id="testStatus-3" class="text-xs font-mono text-slate-500">Ready</span>
+          </div>
+          <h4 class="text-sm font-bold text-white">3. Minimal Attributes & Pairwise Unlinkability</h4>
+          <p class="text-xs text-slate-400">Verifies Library and Hostel receive only their minimal consented boolean claims, with distinct pairwise pseudonymous IDs.</p>
+          <button onclick="runAcceptanceTest(3)" class="w-full py-1.5 rounded-lg bg-cyan-600/30 hover:bg-cyan-600/50 border border-cyan-500/40 text-cyan-300 text-xs font-semibold transition">
+            Run Test 3
+          </button>
+        </div>
+
+        <div class="glass-card p-5 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800">Criterion 4</span>
+            <span id="testStatus-4" class="text-xs font-mono text-slate-500">Ready</span>
+          </div>
+          <h4 class="text-sm font-bold text-white">4. Immediate Dynamic Role Change</h4>
+          <p class="text-xs text-slate-400">Security Admin modifies user role; relying campus services immediately reflect new quota limits and privileges server-side.</p>
+          <button onclick="runAcceptanceTest(4)" class="w-full py-1.5 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-300 text-xs font-semibold transition">
+            Run Test 4
+          </button>
+        </div>
+
+        <div class="glass-card p-5 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800">Criterion 5</span>
+            <span id="testStatus-5" class="text-xs font-mono text-slate-500">Ready</span>
+          </div>
+          <h4 class="text-sm font-bold text-white">5. Active Session Remote Logout</h4>
+          <p class="text-xs text-slate-400">Student inspects device registry in Privacy Dashboard and terminates a remote session; subsequent requests are rejected.</p>
+          <button onclick="runAcceptanceTest(5)" class="w-full py-1.5 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/40 text-indigo-300 text-xs font-semibold transition">
+            Run Test 5
+          </button>
+        </div>
+
+        <div class="glass-card p-5 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800">Criterion 6</span>
+            <span id="testStatus-6" class="text-xs font-mono text-slate-500">Ready</span>
+          </div>
+          <h4 class="text-sm font-bold text-white">6. Token Replay & Session Hijack Defense</h4>
+          <p class="text-xs text-slate-400">Simulates an attacker replaying an old rotated refresh token; IdP detects reuse, invalidates all sessions, and logs alert!</p>
+          <button onclick="runAcceptanceTest(6)" class="w-full py-1.5 rounded-lg bg-rose-600/30 hover:bg-rose-600/50 border border-rose-500/40 text-rose-300 text-xs font-semibold transition">
+            Run Test 6
+          </button>
+        </div>
+
+        <div class="glass-card p-5 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">Criterion 7</span>
+            <span id="testStatus-7" class="text-xs font-mono text-slate-500">Ready</span>
+          </div>
+          <h4 class="text-sm font-bold text-white">7. Tamper-Evident Audit Verification</h4>
+          <p class="text-xs text-slate-400">Proves audit logs are append-only; deliberately injects a database modification and proves hash verification catches it!</p>
+          <button onclick="runAcceptanceTest(7)" class="w-full py-1.5 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/40 text-emerald-300 text-xs font-semibold transition">
+            Run Test 7
+          </button>
+        </div>
+
+        <div class="glass-card p-5 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800">Criterion 8</span>
+            <span id="testStatus-8" class="text-xs font-mono text-slate-500">Ready</span>
+          </div>
+          <h4 class="text-sm font-bold text-white">8. Lost-Device Recovery & Revocation</h4>
+          <p class="text-xs text-slate-400">Student uses backup code to initiate recovery; resets authenticator while all previously active sessions are revoked.</p>
+          <button onclick="runAcceptanceTest(8)" class="w-full py-1.5 rounded-lg bg-amber-600/30 hover:bg-amber-600/50 border border-amber-500/40 text-amber-300 text-xs font-semibold transition">
+            Run Test 8
+          </button>
+        </div>
+
+      </div>
+
+      <div class="glass-panel rounded-2xl p-6 space-y-2">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-300 font-mono flex items-center gap-2">
+            <i data-lucide="terminal" class="w-4 h-4 text-emerald-400"></i>
+            <span>Test Execution Console Log</span>
+          </h4>
+          <button onclick="clearTestLogs()" class="text-[11px] text-slate-500 hover:text-slate-300 font-mono">Clear</button>
+        </div>
+        <pre id="demoTestLogConsole" class="bg-slate-950 p-4 rounded-xl text-xs font-mono text-emerald-400 max-h-60 overflow-y-auto leading-relaxed border border-slate-900">
+Select any test scenario above to execute and verify the PRD acceptance criteria live...
+        </pre>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- MODALS -->
+
+  <!-- 1. CONSENT PROMPT MODAL -->
+  <div id="consentModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay animate-in fade-in">
+    <div class="max-w-md w-full glass-panel rounded-2xl p-6 border border-cyan-500/40 shadow-2xl space-y-4">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 rounded-xl bg-cyan-600/20 border border-cyan-500/40 text-cyan-400 flex items-center justify-center shrink-0">
+          <i data-lucide="shield-check" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h3 id="consentModalTitle" class="text-base font-bold text-white">Campus Central Library</h3>
+          <p class="text-xs text-slate-400">Requests Attribute Access (FR-5.2)</p>
+        </div>
+      </div>
+
+      <div class="p-3 bg-slate-900/80 rounded-xl border border-slate-800 space-y-2">
+        <p class="text-[11px] text-slate-400">Stated Purpose:</p>
+        <p id="consentModalPurpose" class="text-xs text-slate-200">
+          Verify active university enrollment to issue library borrowing privileges.
+        </p>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-300 mb-2">Requested Minimal Attributes:</label>
+        <div id="consentModalClaimsList" class="space-y-1.5 text-xs font-mono">
+        </div>
+      </div>
+
+      <div class="p-2.5 rounded-lg bg-cyan-950/40 border border-cyan-800/60 text-[11px] text-cyan-300">
+        🔒 A pseudonymous Pairwise Identifier will be generated. The service cannot track you across other campus portals.
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <button id="consentModalDenyBtn" class="w-1/3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">
+          Deny
+        </button>
+        <button id="consentModalApproveBtn" class="flex-1 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-bold transition shadow-lg">
+          Approve & Grant Consent
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. ADAPTIVE STEP-UP MODAL -->
+  <div id="stepUpModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay animate-in fade-in">
+    <div class="max-w-sm w-full glass-panel rounded-2xl p-6 border border-emerald-500/40 shadow-2xl space-y-4">
+      <div class="text-center">
+        <div class="w-12 h-12 rounded-xl bg-emerald-600/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto mb-2">
+          <i data-lucide="shield-alert" class="w-6 h-6"></i>
+        </div>
+        <h3 class="text-base font-bold text-white">Adaptive Step-Up Authentication</h3>
+        <p class="text-xs text-slate-400 mt-1">High-risk transaction: Tuition Fee Payment ($1,250)</p>
+      </div>
+
+      <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs text-slate-300">
+        Please enter the current 6-digit TOTP code from your authenticator to authorize this financial action.
+      </div>
+
+      <input type="text" id="stepUpModalCode" placeholder="123456" maxlength="6"
+             class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-center text-xl font-mono tracking-widest text-white focus:outline-none focus:border-emerald-500" />
+
+      <button type="button" id="autoFillStepUpBtn" class="w-full text-center text-[11px] text-cyan-400 hover:underline">
+        ⚡ Auto-fill from TOTP Companion
+      </button>
+
+      <div class="flex gap-2 pt-2">
+        <button id="stepUpModalCancelBtn" class="w-1/3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">
+          Cancel
+        </button>
+        <button id="stepUpModalVerifyBtn" class="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-lg">
+          Verify & Pay
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. ROSTER IMPORT MODAL -->
+  <div id="rosterImportModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay animate-in fade-in">
+    <div class="max-w-lg w-full glass-panel rounded-2xl p-6 border border-purple-500/40 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <i data-lucide="upload-cloud" class="w-4 h-4 text-purple-400"></i>
+          <span>Campus Roster Onboarding (CSV / JSON)</span>
+        </h3>
+        <button id="closeRosterModalBtn" class="text-slate-400 hover:text-white">&times;</button>
+      </div>
+
+      <p class="text-xs text-slate-400">
+        Import new student records from the Student Information System. Unique activation codes are generated automatically.
+      </p>
+
+      <textarea id="rosterImportJson" rows="6" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs font-mono text-slate-200 focus:outline-none focus:border-purple-500">[
+  { "roll_number": "CS2026101", "name": "Mira Desai", "email": "mira.desai@university.edu", "program": "B.Tech AI", "year": "1st Year" },
+  { "roll_number": "ME2026042", "name": "Arjun Singhania", "email": "arjun.s@university.edu", "program": "B.Tech Mechanical", "year": "1st Year" }
+]</textarea>
+
+      <div class="flex justify-end gap-2">
+        <button id="cancelRosterImportBtn" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 font-medium transition">
+          Cancel
+        </button>
+        <button id="submitRosterImportBtn" class="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs text-white font-bold transition">
+          Execute Batch Import
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER (Matching Lovable design) -->
+  <footer class="mt-auto border-t border-slate-800/80 bg-[#090d16] py-8 text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-2.5">
+        <div class="w-6 h-6 rounded-lg bg-blue-600/30 border border-blue-500/40 flex items-center justify-center text-blue-400">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+        </div>
+        <span class="font-bold text-slate-300">CampusID TrustPass</span>
+        <span class="text-slate-600">·</span>
+        <span>One ID. Every campus service. Secure by design.</span>
+      </div>
+      <div class="flex items-center gap-4 text-slate-400 font-mono text-[11px]">
+        <span>OWASP Top 10</span>
+        <span>•</span>
+        <span>DPDP Act 2023</span>
+        <span>•</span>
+        <span>FIDO2 / TOTP Ready</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- App Script -->
+  <script src="app.js"></script>
+</body>
+</html>
